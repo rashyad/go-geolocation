@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"errors"
 	"os"
+	"bytes"
+	"encoding/json"
 )
 
 func ReadUserIP(r *http.Request) string {
@@ -19,10 +21,54 @@ func ReadUserIP(r *http.Request) string {
     return IPAddress
 }
 
+
+func formatJSON(data []byte) string {
+    var out bytes.Buffer
+    err := json.Indent(&out, data, "", " ")
+
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    d := out.Bytes()
+    return string(d)
+}
+
+func getGeoLocation(userIp string) string{
+
+
+	apiUrl := "http://ipwho.is/" + userIp
+
+	request, error := http.NewRequest("GET", apiUrl, nil)
+	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	client := &http.Client{}
+	response, error := client.Do(request)
+
+	if error != nil {
+        fmt.Println(error)
+    }
+
+    responseBody, error := io.ReadAll(response.Body)
+
+    if error != nil {
+        fmt.Println(error)
+    }
+
+    formattedData := formatJSON(responseBody)
+
+    // clean up memory after execution
+    defer response.Body.Close()
+
+	return formattedData
+}
+
 func getRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("got / request\n")
-	io.WriteString(w, "This is my website!\n")
 	io.WriteString(w, ReadUserIP(r))
+	io.WriteString(w, "\n")
+	io.WriteString(w, getGeoLocation(ReadUserIP(r)))
+
 }
 
 func main() {
